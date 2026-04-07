@@ -6,7 +6,7 @@
 $(document).ready(async function () {
   console.log("🏠 Menú Principal Cargado - Alke Wallet (API)");
 
-  const API_URL = "http://localhost:3000/api/v1";
+  const API_URL = "https://alke-wallet-backend.onrender.com/api/v1";
 
   // Verificar autenticación
   verificarAutenticacion();

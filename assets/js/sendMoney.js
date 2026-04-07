@@ -1,7 +1,7 @@
 // ALKE WALLET - Sistema de Transferencias con gestión real de contactos
 
 $(document).ready(async function () {
-  const API_URL = "http://localhost:3000/api/v1";
+  const API_URL = "https://alke-wallet-backend.onrender.com/api/v1";
   console.log("[SENDMONEY] Página cargada");
 
   // Estado global de contactos

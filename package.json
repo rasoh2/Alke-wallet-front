@@ -1,0 +1,11 @@
+{
+  "name": "alkewallet-frontend",
+  "version": "1.0.0",
+  "description": "Frontend estático de AlkeWallet",
+  "scripts": {
+    "dev": "http-server . -p 8000 -c-1 --cors"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

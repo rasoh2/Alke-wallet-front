@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Historial de transacciones de Alke Wallet"
+    />
+    <title>Alke Wallet - Últimos Movimientos</title>
+
+    <!-- Bootstrap 5.3 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <!-- CSS personalizado -->
+    <link rel="stylesheet" href="assets/css/styles.css" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+  </head>
+
+  <body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="menu.html">
+          <svg
+            width="30"
+            height="30"
+            viewBox="0 0 100 100"
+            class="d-inline-block me-2"
+          >
+            <rect x="10" y="30" width="80" height="50" rx="8" fill="#fff" />
+            <rect x="10" y="35" width="80" height="10" fill="#e0e0e0" />
+            <circle cx="70" cy="55" r="5" fill="#4e73df" />
+          </svg>
+          Alke Wallet
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="menu.html">Volver al Menú</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <div class="container py-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+          <!-- Título -->
+          <div class="text-center mb-4">
+            <h2 class="fw-bold text-primary">📊 Últimos Movimientos</h2>
+            <p class="text-muted">Historial completo de tus transacciones</p>
+          </div>
+
+          <!-- Resumen de Saldo -->
+          <div class="row mb-4">
+            <div class="col-12 col-md-4 mb-3">
+              <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body text-center">
+                  <small class="text-muted d-block mb-1">Saldo Actual</small>
+                  <h4 class="fw-bold text-primary mb-0" id="saldoActual">$0</h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4 mb-3">
+              <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body text-center">
+                  <small class="text-muted d-block mb-1">
+                    Total Depositado
+                  </small>
+                  <h4 class="fw-bold text-success mb-0" id="totalDepositado">
+                    $0
+                  </h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4 mb-3">
+              <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body text-center">
+                  <small class="text-muted d-block mb-1">Total Enviado</small>
+                  <h4 class="fw-bold text-danger mb-0" id="totalEnviado">$0</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filtros y Búsqueda -->
+          <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label for="filtroTipo" class="form-label fw-semibold">
+                    Filtrar por tipo:
+                  </label>
+                  <select id="filtroTipo" class="form-select">
+                    <option value="todos">📋 Todos los movimientos</option>
+                    <option value="deposito">💰 Depósitos</option>
+                    <option value="transferencia">💸 Transferencias</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label for="ordenar" class="form-label fw-semibold">
+                    Ordenar por:
+                  </label>
+                  <select id="ordenar" class="form-select">
+                    <option value="reciente">🕐 Más reciente</option>
+                    <option value="antiguo">🕐 Más antiguo</option>
+                    <option value="mayor">💰 Mayor monto</option>
+                    <option value="menor">💰 Menor monto</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Movimientos -->
+          <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-body">
+              <h5 class="fw-bold mb-3">Transacciones</h5>
+
+              <!-- Lista dinámica -->
+              <ul id="listaMovimientos" class="list-group list-group-flush">
+                <!-- Se carga dinámicamente con jQuery -->
+              </ul>
+
+              <!-- Mensaje sin movimientos -->
+              <div
+                id="sinMovimientos"
+                class="text-center py-5"
+                style="display: none"
+              >
+                <svg
+                  width="80"
+                  height="80"
+                  viewBox="0 0 24 24"
+                  fill="#6c757d"
+                  class="mb-3"
+                >
+                  <path
+                    d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm0 4c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1.4c0-2 4-3.1 6-3.1s6 1.1 6 3.1V19z"
+                  />
+                </svg>
+                <h5 class="text-muted">No hay movimientos registrados</h5>
+                <p class="text-muted">
+                  Comienza realizando un depósito o transferencia
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botón Volver -->
+          <div class="text-center mt-4">
+            <a href="menu.html" class="btn btn-outline-primary">
+              ⬅️ Volver al Menú
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+      <p class="mb-0">
+        &copy; 2025 Alke Wallet. Desarrollado con ❤️ para el Bootcamp SENCE
+      </p>
+    </footer>
+
+    <!-- Bootstrap Bundle JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- jQuery -->
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Script de Transacciones -->
+    <script src="assets/js/transactions.js"></script>
+  </body>
+</html>

@@ -50,7 +50,7 @@ $(document).ready(function () {
       }
       
     } catch (error) {
-      mostrarAlerta(`❌ ${error.message}<br><small>Si no tienes cuenta, crea una cuenta abajo.</small>`, "danger");
+      mostrarAlerta(`❌ Credenciales inválidas<br><small><strong>¿No tienes una cuenta?</strong> Haz clic en el botón "Crear Nueva Cuenta" para registrarte y comenzar a usar Alke Wallet.</small>`, "danger");
 
       $("#password").val("").focus();
       $("#loginForm").addClass("shake");

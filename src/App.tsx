@@ -3,37 +3,37 @@ import { TarjetaSaldo } from './components/TarjetaSaldo';
 import { PanelTransferencias } from './components/PanelTransferencias';
 import { WidgetCripto } from './components/WidgetCripto';
 import { HistorialTransacciones } from './components/HistorialTransacciones';
+import { LoginRegistro } from './components/LoginRegistro';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
 type VistaType = 'inicio' | 'transferencias' | 'historial';
 
 function App() {
-  const [saldo, setSaldo] = useState<number>(1000000); // Saldo inicial por defecto
+  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
+  const [modoSimulado, setModoSimulado] = useState<boolean>(localStorage.getItem("modoSimulado") === "true");
+  
+  const [saldo, setSaldo] = useState<number>(1000000); // Saldo por defecto
   const [cargando, setCargando] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [usuario, setUsuario] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [vista, setVista] = useState<VistaType>('inicio');
 
   const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:3000/api/v1"
     : "https://alke-wallet-backend.onrender.com/api/v1";
 
-  // Actualizar saldo y datos desde el backend si el usuario tiene un token activo
+  // Obtener perfil de usuario si está autenticado
   const obtenerDatosPerfil = async (authToken: string) => {
     setCargando(true);
     setError(null);
     try {
       const response = await axios.get(`${API_URL}/usuarios/perfil`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`
-        }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       if (response.data.status === 'success') {
         setSaldo(parseFloat(response.data.data.saldo));
         setUsuario(response.data.data.nombre);
-        // También guardar el ID de usuario en localStorage si no está
         if (response.data.data.id) {
           localStorage.setItem("idUsuario", response.data.data.id.toString());
         }
@@ -52,78 +52,62 @@ function App() {
   useEffect(() => {
     if (token) {
       obtenerDatosPerfil(token);
-    } else {
+    } else if (modoSimulado) {
       setUsuario("Usuario Simulador");
+      const localSaldo = localStorage.getItem("saldo");
+      setSaldo(localSaldo ? parseFloat(localSaldo) : 1000000);
     }
-  }, [token]);
+  }, [token, modoSimulado]);
+
+  const handleLoginSuccess = (nuevoToken: string, nombre: string, id: number, saldoInicial: number) => {
+    localStorage.setItem("token", nuevoToken);
+    localStorage.setItem("idUsuario", id.toString());
+    localStorage.setItem("nombreUsuario", nombre);
+    localStorage.setItem("saldo", saldoInicial.toString());
+    localStorage.removeItem("modoSimulado");
+    
+    setToken(nuevoToken);
+    setModoSimulado(false);
+    setSaldo(saldoInicial);
+    setUsuario(nombre);
+    setVista('inicio');
+  };
+
+  const handleSimulate = () => {
+    localStorage.setItem("modoSimulado", "true");
+    localStorage.setItem("saldo", "1000000");
+    setModoSimulado(true);
+    setToken(null);
+    setSaldo(1000000);
+    setUsuario("Usuario Simulador");
+    setVista('inicio');
+    Swal.fire({
+      icon: 'info',
+      title: 'Modo Simulador Activado',
+      text: 'Explora la interfaz de Alke Wallet con datos locales de prueba.',
+      timer: 2000,
+      showConfirmButton: false
+    });
+  };
 
   const cerrarSesion = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("saldo");
     localStorage.removeItem("idUsuario");
+    localStorage.removeItem("nombreUsuario");
+    localStorage.removeItem("modoSimulado");
+    
     setToken(null);
-    setUsuario("Usuario Simulador");
-    setSaldo(1000000); // Restaurar saldo por defecto
+    setModoSimulado(false);
+    setUsuario(null);
+    setSaldo(1000000);
     setVista('inicio');
     Swal.fire({
       icon: 'info',
       title: 'Sesión Cerrada',
-      text: 'Se ha cerrado la sesión correctamente.',
+      text: 'Has salido de Alke Wallet.',
       timer: 1500,
       showConfirmButton: false
-    });
-  };
-
-  const simularLogin = () => {
-    Swal.fire({
-      title: 'Simular Login / Conectar Backend',
-      html: `
-        <input type="text" id="swal-input-email" class="swal2-input" placeholder="Correo electrónico" value="user@wallet.com">
-        <input type="password" id="swal-input-password" class="swal2-input" placeholder="Contraseña" value="123456">
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Iniciar Sesión',
-      cancelButtonText: 'Cancelar',
-      preConfirm: () => {
-        const correo = (document.getElementById('swal-input-email') as HTMLInputElement).value;
-        const password = (document.getElementById('swal-input-password') as HTMLInputElement).value;
-        if (!correo || !password) {
-          Swal.showValidationMessage('Por favor completa todos los campos');
-        }
-        return { correo, password };
-      }
-    }).then(async (result) => {
-      if (result.isConfirmed && result.value) {
-        setCargando(true);
-        try {
-          const response = await axios.post(`${API_URL}/usuarios/login`, result.value);
-          if (response.data.status === 'success' && response.data.data.token) {
-            const nuevoToken = response.data.data.token;
-            const usuarioObj = response.data.data.usuario;
-            localStorage.setItem("token", nuevoToken);
-            if (usuarioObj && usuarioObj.id) {
-              localStorage.setItem("idUsuario", usuarioObj.id.toString());
-            }
-            setToken(nuevoToken);
-            Swal.fire({
-              icon: 'success',
-              title: '¡Éxito!',
-              text: 'Sesión iniciada y sincronizada con la base de datos.',
-              timer: 1500,
-              showConfirmButton: false
-            });
-          }
-        } catch (err: any) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error de Autenticación',
-            text: err.response?.data?.message || 'No se pudo iniciar sesión.'
-          });
-        } finally {
-          setCargando(false);
-        }
-      }
     });
   };
 
@@ -167,7 +151,9 @@ function App() {
             setCargando(false);
           }
         } else {
-          setSaldo(prev => prev + monto);
+          const nuevoSaldo = saldo + monto;
+          localStorage.setItem("saldo", nuevoSaldo.toString());
+          setSaldo(nuevoSaldo);
           Swal.fire({
             icon: 'success',
             title: 'Simulación Exitosa',
@@ -177,6 +163,24 @@ function App() {
       }
     });
   };
+
+  const handleTransferSuccess = (nuevoSaldo: number) => {
+    setSaldo(nuevoSaldo);
+    if (!token) {
+      localStorage.setItem("saldo", nuevoSaldo.toString());
+    }
+  };
+
+  // Renderizar Login/Registro si no hay sesión iniciada ni simulada
+  if (!token && !modoSimulado) {
+    return (
+      <LoginRegistro 
+        API_URL={API_URL} 
+        onLoginSuccess={handleLoginSuccess} 
+        onSimulate={handleSimulate} 
+      />
+    );
+  }
 
   return (
     <div className="min-vh-100 d-flex flex-column bg-light">
@@ -189,7 +193,12 @@ function App() {
               <rect x="10" y="35" width="80" height="10" fill="#e0e0e0" />
               <circle cx="70" cy="55" r="5" fill="#4e73df" />
             </svg>
-            Alke Wallet <span className="badge bg-info ms-2 fs-6">React SPA</span>
+            Alke Wallet 
+            {modoSimulado ? (
+              <span className="badge bg-warning ms-2 fs-7 text-dark">Simulador</span>
+            ) : (
+              <span className="badge bg-success ms-2 fs-7">Real</span>
+            )}
           </span>
           
           <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -231,15 +240,9 @@ function App() {
               <span className="text-white me-3" id="nombreUsuario">
                 👋 {usuario || "Cargando..."}
               </span>
-              {token ? (
-                <button className="btn btn-outline-light btn-sm" onClick={cerrarSesion}>
-                  Cerrar Sesión
-                </button>
-              ) : (
-                <button className="btn btn-outline-light btn-sm" onClick={simularLogin}>
-                  Conectar Backend
-                </button>
-              )}
+              <button className="btn btn-outline-light btn-sm" onClick={cerrarSesion}>
+                Cerrar Sesión
+              </button>
             </div>
           </div>
         </div>
@@ -318,7 +321,7 @@ function App() {
                   saldo={saldo} 
                   token={token} 
                   API_URL={API_URL} 
-                  onTransferSuccess={(nuevoSaldo) => setSaldo(nuevoSaldo)} 
+                  onTransferSuccess={handleTransferSuccess} 
                 />
               </div>
             ) : (

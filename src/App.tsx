@@ -272,21 +272,6 @@ function App() {
                       </button>
                     </div>
                   </div>
-
-                  {/* Diagnóstico */}
-                  <div className="card shadow-sm border-0 rounded-4 p-4">
-                    <h6 className="fw-bold text-uppercase text-secondary mb-3">Diagnóstico de Entorno</h6>
-                    <div className="p-3 bg-dark text-white rounded-3 fs-7 font-monospace">
-                      <p className="mb-1"><span className="text-success">✔</span> Modo: <span className="text-info">Vite + React 19</span></p>
-                      <p className="mb-1"><span className="text-success">✔</span> Servidor API: <span className="text-warning">{API_URL}</span></p>
-                      <p className="mb-1">
-                        <span className="text-success">✔</span> Conexión DB:{" "}
-                        <span className={token ? "text-success fw-bold" : "text-danger"}>
-                          {token ? "Conectado a Neon (Real)" : "Simulado Local"}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Columna Derecha: Widget de Criptomonedas */}

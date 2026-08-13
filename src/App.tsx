@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { TarjetaSaldo } from './components/TarjetaSaldo';
 import { PanelTransferencias } from './components/PanelTransferencias';
+import { WidgetCripto } from './components/WidgetCripto';
+import { HistorialTransacciones } from './components/HistorialTransacciones';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
-type VistaType = 'inicio' | 'transferencias';
+type VistaType = 'inicio' | 'transferencias' | 'historial';
 
 function App() {
   const [saldo, setSaldo] = useState<number>(1000000); // Saldo inicial por defecto
@@ -31,6 +33,10 @@ function App() {
       if (response.data.status === 'success') {
         setSaldo(parseFloat(response.data.data.saldo));
         setUsuario(response.data.data.nombre);
+        // También guardar el ID de usuario en localStorage si no está
+        if (response.data.data.id) {
+          localStorage.setItem("idUsuario", response.data.data.id.toString());
+        }
       }
     } catch (err: any) {
       console.error("Error al obtener datos:", err);
@@ -54,6 +60,7 @@ function App() {
   const cerrarSesion = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("saldo");
+    localStorage.removeItem("idUsuario");
     setToken(null);
     setUsuario("Usuario Simulador");
     setSaldo(1000000); // Restaurar saldo por defecto
@@ -93,7 +100,11 @@ function App() {
           const response = await axios.post(`${API_URL}/usuarios/login`, result.value);
           if (response.data.status === 'success' && response.data.data.token) {
             const nuevoToken = response.data.data.token;
+            const usuarioObj = response.data.data.usuario;
             localStorage.setItem("token", nuevoToken);
+            if (usuarioObj && usuarioObj.id) {
+              localStorage.setItem("idUsuario", usuarioObj.id.toString());
+            }
             setToken(nuevoToken);
             Swal.fire({
               icon: 'success',
@@ -205,6 +216,15 @@ function App() {
                   Transferencias
                 </button>
               </li>
+              <li className="nav-item">
+                <button 
+                  className={`nav-link btn btn-link fw-semibold border-0 ${vista === 'historial' ? 'text-white fw-bold active' : 'text-white-50'}`}
+                  onClick={() => setVista('historial')}
+                  style={{ textDecoration: 'none' }}
+                >
+                  Movimientos
+                </button>
+              </li>
             </ul>
 
             <div className="d-flex align-items-center">
@@ -231,8 +251,9 @@ function App() {
           <div className="col-12 col-lg-10">
             
             {vista === 'inicio' ? (
-              <div className="row justify-content-center">
-                <div className="col-12 col-md-8 col-lg-6">
+              <div className="row g-4">
+                {/* Columna Izquierda: TarjetaSaldo + Acciones */}
+                <div className="col-12 col-md-6">
                   {/* Componente Migrado: Tarjeta de Saldo */}
                   <TarjetaSaldo saldo={saldo} cargando={cargando} error={error} />
 
@@ -264,8 +285,13 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Columna Derecha: Widget de Criptomonedas */}
+                <div className="col-12 col-md-6">
+                  <WidgetCripto />
+                </div>
               </div>
-            ) : (
+            ) : vista === 'transferencias' ? (
               <div>
                 {/* Cabecera de la sección */}
                 <div className="text-center mb-4">
@@ -293,6 +319,21 @@ function App() {
                   token={token} 
                   API_URL={API_URL} 
                   onTransferSuccess={(nuevoSaldo) => setSaldo(nuevoSaldo)} 
+                />
+              </div>
+            ) : (
+              <div>
+                {/* Cabecera de la sección */}
+                <div className="text-center mb-4">
+                  <h2 className="fw-bold text-primary">📊 Últimos Movimientos</h2>
+                  <p className="text-muted">Historial completo de tus transacciones</p>
+                </div>
+
+                {/* Componente Migrado: Historial de Transacciones */}
+                <HistorialTransacciones 
+                  saldo={saldo} 
+                  token={token} 
+                  API_URL={API_URL} 
                 />
               </div>
             )}

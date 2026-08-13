@@ -238,7 +238,7 @@ function App() {
 
             <div className="d-flex align-items-center">
               <span className="text-white me-3" id="nombreUsuario">
-                👋 {usuario || "Cargando..."}
+                {usuario || "Cargando..."}
               </span>
               <button className="btn btn-outline-light btn-sm" onClick={cerrarSesion}>
                 Cerrar Sesión

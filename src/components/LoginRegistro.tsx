@@ -88,7 +88,7 @@ export const LoginRegistro: React.FC<LoginRegistroProps> = ({
         Swal.fire({
           icon: 'success',
           title: '¡Registro Exitoso! 🎉',
-          text: 'Tu cuenta ha sido creada con un saldo inicial de $100.000 CLP de prueba. Ahora puedes iniciar sesión.',
+          text: 'Tu cuenta ha sido creada con un saldo inicial de $1.000.000 CLP de prueba. Ahora puedes iniciar sesión.',
           confirmButtonText: 'Iniciar Sesión Now'
         }).then(() => {
           setLoginEmail(regEmail);

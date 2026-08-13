@@ -6,7 +6,9 @@
 $(document).ready(async function () {
   console.log("💰 Pantalla de Depósito Cargada - Alke Wallet (API)");
 
-  const API_URL = "https://alke-wallet-backend.onrender.com/api/v1";
+  const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:3000/api/v1"
+    : "https://alke-wallet-backend.onrender.com/api/v1";
 
   verificarAutenticacion();
   await actualizarSaldoDesdeAPI();

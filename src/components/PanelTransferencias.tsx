@@ -63,6 +63,11 @@ export const PanelTransferencias: React.FC = () => {
       return;
     }
 
+    if (numMonto > 5000000) {
+      Swal.fire('Error', 'El monto máximo permitido por transferencia es de $5.000.000 CLP', 'error');
+      return;
+    }
+
     let correoReceptor = selectedContact?.correo;
     if (!correoReceptor) {
       const { value: email } = await Swal.fire({

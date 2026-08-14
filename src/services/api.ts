@@ -102,7 +102,7 @@ export const walletService = {
         tipo: 'deposito',
         createdAt: new Date().toISOString()
       });
-      localStorage.setItem(LOCAL_TRANS_KEY, JSON.stringify(list));
+      localStorage.setItem(LOCAL_TRANS_KEY, JSON.stringify(list.slice(0, 50)));
       return nuevoSaldo;
     }
     const response = await axios.post(`${API_URL}/transacciones/deposito`, { monto }, getAuthHeaders());
@@ -146,7 +146,7 @@ export const walletService = {
         receiver_id: contact.id,
         receiver: { nombre: contact.nombre, correo: contact.correo }
       });
-      localStorage.setItem(LOCAL_TRANS_KEY, JSON.stringify(list));
+      localStorage.setItem(LOCAL_TRANS_KEY, JSON.stringify(list.slice(0, 50)));
       return nuevoSaldo;
     }
     const response = await axios.post(`${API_URL}/transacciones/transferencia`, { receiver_correo: receiverCorreo, monto }, getAuthHeaders());

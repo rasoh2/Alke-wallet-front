@@ -1,100 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useMemo } from 'react';
+import { useTransaction } from '../context/TransactionContext';
+import { useAuth } from '../context/AuthContext';
 
-interface Transaccion {
-  id: number;
-  tipo: 'deposito' | 'transferencia';
-  monto: number;
-  descripcion: string;
-  fechaFormateada: string;
-  timestamp: number;
-}
-
-interface HistorialTransaccionesProps {
-  saldo: number;
-  token: string | null;
-  API_URL: string;
-}
-
-const TRANSACCIONES_MOCK: Transaccion[] = [
-  { id: 1, tipo: 'deposito', monto: 1000000, descripcion: 'Depósito inicial de cuenta', fechaFormateada: '13/08/2026, 10:00:00', timestamp: 1786632000000 },
-  { id: 2, tipo: 'transferencia', monto: 15000, descripcion: 'Transferencia enviada a Pedro Martínez', fechaFormateada: '13/08/2026, 11:30:00', timestamp: 1786637400000 },
-  { id: 3, tipo: 'deposito', monto: 5000, descripcion: 'Depósito de saldo simulado', fechaFormateada: '13/08/2026, 12:20:00', timestamp: 1786640400000 }
-];
-
-export const HistorialTransacciones: React.FC<HistorialTransaccionesProps> = ({
-  saldo,
-  token,
-  API_URL
-}) => {
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
-  const [cargando, setCargando] = useState(false);
+export const HistorialTransacciones: React.FC = () => {
+  const { saldo, transacciones, cargando } = useTransaction();
+  const { idUsuario } = useAuth();
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'deposito' | 'transferencia'>('todos');
   const [ordenarPor, setOrdenarPor] = useState<'reciente' | 'antiguo' | 'mayor' | 'menor'>('reciente');
 
-  const cargarHistorial = async () => {
-    if (token) {
-      setCargando(true);
-      try {
-        const response = await axios.get(`${API_URL}/transacciones`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+  // Mapear y clasificar transacciones según el usuario logueado
+  const transaccionesMapeadas = useMemo(() => {
+    const miId = parseInt(idUsuario || '0');
+    return transacciones.map(t => {
+      let tipoCalculado: 'deposito' | 'transferencia' = t.tipo;
+      let descripcion = "Depósito de saldo";
 
-        if (response.data.status === 'success') {
-          const miId = parseInt(localStorage.getItem("idUsuario") || '0');
-          const dataMapped = response.data.data.map((t: any) => {
-            let tipoCalculado: 'deposito' | 'transferencia' = t.tipo;
-            if (t.tipo === 'transferencia') {
-              tipoCalculado = (t.sender_id === miId) ? "transferencia" : "deposito";
-            }
-
-            return {
-              id: t.id,
-              tipo: tipoCalculado,
-              monto: parseFloat(t.monto),
-              descripcion: t.tipo === 'transferencia' ? 
-                (t.sender_id === miId ? "Transferencia enviada" : "Transferencia recibida") : 
-                "Depósito de saldo",
-              fechaFormateada: new Date(t.createdAt).toLocaleString("es-CL"),
-              timestamp: new Date(t.createdAt).getTime()
-            };
-          });
-          setTransacciones(dataMapped);
+      if (t.tipo === 'transferencia') {
+        if (t.sender_id === miId) {
+          tipoCalculado = "transferencia";
+          descripcion = `Transferencia enviada${t.receiver ? ` a ${t.receiver.nombre}` : ''}`;
+        } else {
+          tipoCalculado = "deposito";
+          descripcion = `Transferencia recibida${t.sender ? ` de ${t.sender.nombre}` : ''}`;
         }
-      } catch (e) {
-        console.error("Error al cargar transacciones:", e);
-        setTransacciones([]);
-      } finally {
-        setCargando(false);
       }
-    } else {
-      setTransacciones(TRANSACCIONES_MOCK);
-    }
-  };
 
-  useEffect(() => {
-    cargarHistorial();
-  }, [token, saldo]); // Recargar si cambia el saldo (p. ej. tras realizar un depósito o transferencia)
+      return {
+        id: t.id,
+        tipo: tipoCalculado,
+        monto: parseFloat(t.monto),
+        descripcion,
+        fechaFormateada: new Date(t.createdAt).toLocaleString("es-CL"),
+        timestamp: new Date(t.createdAt).getTime()
+      };
+    });
+  }, [transacciones, idUsuario]);
 
   // Totales para las tarjetas de resumen
-  const totalDepositado = transacciones
-    .filter(t => t.tipo === 'deposito')
-    .reduce((acc, t) => acc + t.monto, 0);
+  const totalDepositado = useMemo(() => {
+    return transaccionesMapeadas
+      .filter(t => t.tipo === 'deposito')
+      .reduce((acc, t) => acc + t.monto, 0);
+  }, [transaccionesMapeadas]);
 
-  const totalEnviado = transacciones
-    .filter(t => t.tipo === 'transferencia')
-    .reduce((acc, t) => acc + t.monto, 0);
+  const totalEnviado = useMemo(() => {
+    return transaccionesMapeadas
+      .filter(t => t.tipo === 'transferencia')
+      .reduce((acc, t) => acc + t.monto, 0);
+  }, [transaccionesMapeadas]);
 
   // Filtrado y Ordenación
-  const transaccionesFiltradas = transacciones
-    .filter(t => filtroTipo === 'todos' || t.tipo === filtroTipo)
-    .sort((a, b) => {
-      if (ordenarPor === 'reciente') return b.timestamp - a.timestamp;
-      if (ordenarPor === 'antiguo') return a.timestamp - b.timestamp;
-      if (ordenarPor === 'mayor') return b.monto - a.monto;
-      if (ordenarPor === 'menor') return a.monto - b.monto;
-      return 0;
-    });
+  const transaccionesFiltradas = useMemo(() => {
+    return transaccionesMapeadas
+      .filter(t => filtroTipo === 'todos' || t.tipo === filtroTipo)
+      .sort((a, b) => {
+        if (ordenarPor === 'reciente') return b.timestamp - a.timestamp;
+        if (ordenarPor === 'antiguo') return a.timestamp - b.timestamp;
+        if (ordenarPor === 'mayor') return b.monto - a.monto;
+        if (ordenarPor === 'menor') return a.monto - b.monto;
+        return 0;
+      });
+  }, [transaccionesMapeadas, filtroTipo, ordenarPor]);
 
   return (
     <div className="fade-in">
@@ -113,7 +79,7 @@ export const HistorialTransacciones: React.FC<HistorialTransaccionesProps> = ({
         <div className="col-12 col-md-4 mb-3">
           <div className="card shadow-sm border-0 rounded-4">
             <div className="card-body text-center py-3">
-              <small className="text-muted d-block mb-1">Total Depositado</small>
+              <small className="text-muted d-block mb-1">Total Ingresos / Depósitos</small>
               <h4 className="fw-bold text-success mb-0">
                 ${Math.floor(totalDepositado).toLocaleString("es-CL")} CLP
               </h4>
@@ -123,7 +89,7 @@ export const HistorialTransacciones: React.FC<HistorialTransaccionesProps> = ({
         <div className="col-12 col-md-4 mb-3">
           <div className="card shadow-sm border-0 rounded-4">
             <div className="card-body text-center py-3">
-              <small className="text-muted d-block mb-1">Total Enviado</small>
+              <small className="text-muted d-block mb-1">Total Egresos / Enviado</small>
               <h4 className="fw-bold text-danger mb-0">
                 ${Math.floor(totalEnviado).toLocaleString("es-CL")} CLP
               </h4>
@@ -138,33 +104,33 @@ export const HistorialTransacciones: React.FC<HistorialTransaccionesProps> = ({
           <div className="row g-3">
             <div className="col-12 col-md-6">
               <label htmlFor="filtroTipo" className="form-label fw-semibold">
-                Filtrar por tipo:
+                Filtrar por Tipo
               </label>
-              <select 
-                id="filtroTipo" 
+              <select
+                id="filtroTipo"
                 className="form-select"
                 value={filtroTipo}
                 onChange={(e) => setFiltroTipo(e.target.value as any)}
               >
-                <option value="todos">📋 Todos los movimientos</option>
-                <option value="deposito">💰 Depósitos</option>
-                <option value="transferencia">💸 Transferencias</option>
+                <option value="todos">Todos los movimientos</option>
+                <option value="deposito">Ingresos / Depósitos</option>
+                <option value="transferencia">Egresos / Transferencias</option>
               </select>
             </div>
             <div className="col-12 col-md-6">
-              <label htmlFor="ordenar" className="form-label fw-semibold">
-                Ordenar por:
+              <label htmlFor="ordenarPor" className="form-label fw-semibold">
+                Ordenar por
               </label>
-              <select 
-                id="ordenar" 
+              <select
+                id="ordenarPor"
                 className="form-select"
                 value={ordenarPor}
                 onChange={(e) => setOrdenarPor(e.target.value as any)}
               >
-                <option value="reciente">🕐 Más reciente</option>
-                <option value="antiguo">🕐 Más antiguo</option>
-                <option value="mayor">💰 Mayor monto</option>
-                <option value="menor">💰 Menor monto</option>
+                <option value="reciente">Más recientes primero</option>
+                <option value="antiguo">Más antiguos primero</option>
+                <option value="mayor">Mayor monto primero</option>
+                <option value="menor">Menor monto primero</option>
               </select>
             </div>
           </div>
@@ -173,54 +139,47 @@ export const HistorialTransacciones: React.FC<HistorialTransaccionesProps> = ({
 
       {/* Listado de Transacciones */}
       <div className="card shadow-sm border-0 rounded-4">
-        <div className="card-body p-4">
-          <h5 className="fw-bold mb-4">Transacciones</h5>
-
-          {cargando ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
-              </div>
-              <p className="text-muted small mt-2">Cargando tu historial...</p>
-            </div>
-          ) : transaccionesFiltradas.length === 0 ? (
-            <div className="text-center py-5 text-muted">
-              <span className="fs-1 d-block mb-2">🔍</span>
-              <p className="mb-0">No se encontraron movimientos registrados.</p>
-            </div>
-          ) : (
-            <ul className="list-group list-group-flush">
-              {transaccionesFiltradas.map((mov) => {
-                const esIngreso = mov.tipo === 'deposito';
-                const signo = esIngreso ? '+' : '-';
-                const claseMonto = esIngreso ? 'text-success' : 'text-danger';
-                const icono = esIngreso ? '💰' : '💸';
-                const badgeClase = esIngreso ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
-
-                return (
-                  <li key={mov.id} className="list-group-item d-flex justify-content-between align-items-start border-0 border-bottom px-0 py-3">
-                    <div className="d-flex align-items-start">
-                      <span className={`badge ${badgeClase} rounded-circle p-2 me-3 fs-6 d-flex align-items-center justify-content-center`} style={{ width: '38px', height: '38px' }}>
-                        {icono}
-                      </span>
-                      <div>
-                        <div className="fw-bold fs-6">
-                          {esIngreso ? 'Depósito de Dinero' : 'Transferencia Realizada'}
-                        </div>
-                        <div className="text-muted small mb-1">📝 {mov.descripcion}</div>
-                        <div className="text-muted small">📅 {mov.fechaFormateada}</div>
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th className="px-4 py-3">ID Movimiento</th>
+                  <th className="py-3">Fecha y Hora</th>
+                  <th className="py-3">Descripción</th>
+                  <th className="py-3 text-end px-4">Monto</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCuerpoHistorial">
+                {cargando && transaccionesMapeadas.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-5">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Cargando movimientos...</span>
                       </div>
-                    </div>
-                    <div className="text-end">
-                      <h5 className={`fw-bold ${claseMonto} mb-0`}>
-                        {signo}${Math.floor(mov.monto).toLocaleString("es-CL")}
-                      </h5>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                    </td>
+                  </tr>
+                ) : transaccionesFiltradas.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-5 text-muted">
+                      No hay movimientos que coincidan con los filtros aplicados.
+                    </td>
+                  </tr>
+                ) : (
+                  transaccionesFiltradas.map((t) => (
+                    <tr key={t.id}>
+                      <td className="px-4 py-3 font-monospace small">#{t.id}</td>
+                      <td className="py-3">{t.fechaFormateada}</td>
+                      <td className="py-3 fw-medium">{t.descripcion}</td>
+                      <td className={`py-3 text-end fw-bold px-4 ${t.tipo === 'deposito' ? 'text-success' : 'text-danger'}`}>
+                        {t.tipo === 'deposito' ? '+' : '-'} ${t.monto.toLocaleString("es-CL")} CLP
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

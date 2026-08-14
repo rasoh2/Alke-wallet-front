@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../services/api';
 
-interface LoginRegistroProps {
-  API_URL: string;
-  onLoginSuccess: (token: string, nombre: string, id: number, saldo: number) => void;
-  onSimulate: () => void;
-}
-
-export const LoginRegistro: React.FC<LoginRegistroProps> = ({
-  API_URL,
-  onLoginSuccess,
-  onSimulate
-}) => {
+export const LoginRegistro: React.FC = () => {
+  const { login, simulate } = useAuth();
   const [tab, setTab] = useState<'login' | 'registro'>('login');
   
   // Login State
@@ -49,7 +42,7 @@ export const LoginRegistro: React.FC<LoginRegistroProps> = ({
           timer: 1500,
           showConfirmButton: false
         });
-        onLoginSuccess(token, usuario.nombre, usuario.id, parseFloat(usuario.saldo));
+        login(token, usuario.id, usuario.nombre, parseFloat(usuario.saldo));
       }
     } catch (err: any) {
       console.error(err);
@@ -228,7 +221,7 @@ export const LoginRegistro: React.FC<LoginRegistroProps> = ({
             <button
               type="button"
               className="btn btn-link btn-sm d-block mx-auto fw-bold text-decoration-none text-info mt-1"
-              onClick={onSimulate}
+              onClick={simulate}
             >
               💻 Entrar en Modo Simulador (Prueba Local)
             </button>

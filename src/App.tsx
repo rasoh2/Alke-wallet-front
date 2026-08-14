@@ -1,115 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { TarjetaSaldo } from './components/TarjetaSaldo';
 import { PanelTransferencias } from './components/PanelTransferencias';
 import { WidgetCripto } from './components/WidgetCripto';
 import { HistorialTransacciones } from './components/HistorialTransacciones';
 import { LoginRegistro } from './components/LoginRegistro';
-import axios from 'axios';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { TransactionProvider, useTransaction } from './context/TransactionContext';
 import Swal from 'sweetalert2';
 
 type VistaType = 'inicio' | 'transferencias' | 'historial';
 
-function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [modoSimulado, setModoSimulado] = useState<boolean>(localStorage.getItem("modoSimulado") === "true");
-  
-  const [saldo, setSaldo] = useState<number>(1000000); // Saldo por defecto
-  const [cargando, setCargando] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [usuario, setUsuario] = useState<string | null>(null);
+function WalletDashboard() {
+  const { token, modoSimulado, usuario, logout, cargandoSesion } = useAuth();
+  const { saldo, cargando, error, depositar } = useTransaction();
   const [vista, setVista] = useState<VistaType>('inicio');
-
-  const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:3000/api/v1"
-    : "https://alke-wallet-backend.onrender.com/api/v1";
-
-  // Obtener perfil de usuario si está autenticado
-  const obtenerDatosPerfil = async (authToken: string) => {
-    setCargando(true);
-    setError(null);
-    try {
-      const response = await axios.get(`${API_URL}/usuarios/perfil`, {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      if (response.data.status === 'success') {
-        setSaldo(parseFloat(response.data.data.saldo));
-        setUsuario(response.data.data.nombre);
-        if (response.data.data.id) {
-          localStorage.setItem("idUsuario", response.data.data.id.toString());
-        }
-      }
-    } catch (err: any) {
-      console.error("Error al obtener datos:", err);
-      setError(err.response?.data?.message || "No se pudo conectar al backend");
-      if (err.response?.status === 401) {
-        cerrarSesion();
-      }
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      obtenerDatosPerfil(token);
-    } else if (modoSimulado) {
-      setUsuario("Usuario Simulador");
-      const localSaldo = localStorage.getItem("saldo");
-      setSaldo(localSaldo ? parseFloat(localSaldo) : 1000000);
-    }
-  }, [token, modoSimulado]);
-
-  const handleLoginSuccess = (nuevoToken: string, nombre: string, id: number, saldoInicial: number) => {
-    localStorage.setItem("token", nuevoToken);
-    localStorage.setItem("idUsuario", id.toString());
-    localStorage.setItem("nombreUsuario", nombre);
-    localStorage.setItem("saldo", saldoInicial.toString());
-    localStorage.removeItem("modoSimulado");
-    
-    setToken(nuevoToken);
-    setModoSimulado(false);
-    setSaldo(saldoInicial);
-    setUsuario(nombre);
-    setVista('inicio');
-  };
-
-  const handleSimulate = () => {
-    localStorage.setItem("modoSimulado", "true");
-    localStorage.setItem("saldo", "1000000");
-    setModoSimulado(true);
-    setToken(null);
-    setSaldo(1000000);
-    setUsuario("Usuario Simulador");
-    setVista('inicio');
-    Swal.fire({
-      icon: 'info',
-      title: 'Modo Simulador Activado',
-      text: 'Explora la interfaz de Alke Wallet con datos locales de prueba.',
-      timer: 2000,
-      showConfirmButton: false
-    });
-  };
-
-  const cerrarSesion = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("saldo");
-    localStorage.removeItem("idUsuario");
-    localStorage.removeItem("nombreUsuario");
-    localStorage.removeItem("modoSimulado");
-    
-    setToken(null);
-    setModoSimulado(false);
-    setUsuario(null);
-    setSaldo(1000000);
-    setVista('inicio');
-    Swal.fire({
-      icon: 'info',
-      title: 'Sesión Cerrada',
-      text: 'Has salido de Alke Wallet.',
-      timer: 1500,
-      showConfirmButton: false
-    });
-  };
 
   const realizarDeposito = () => {
     Swal.fire({
@@ -133,53 +37,31 @@ function App() {
     }).then(async (result) => {
       if (result.isConfirmed && result.value) {
         const monto = parseFloat(result.value);
-        if (token) {
-          setCargando(true);
-          try {
-            const response = await axios.post(
-              `${API_URL}/transacciones/deposito`,
-              { monto },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if (response.data.status === 'success') {
-              setSaldo(parseFloat(response.data.data.nuevoSaldo));
-              Swal.fire('¡Éxito!', `Depósito de $${monto.toLocaleString("es-CL")} CLP acreditado en la base de datos.`, 'success');
-            }
-          } catch (err: any) {
-            Swal.fire('Error', err.response?.data?.message || 'No se pudo completar el depósito.', 'error');
-          } finally {
-            setCargando(false);
-          }
-        } else {
-          const nuevoSaldo = saldo + monto;
-          localStorage.setItem("saldo", nuevoSaldo.toString());
-          setSaldo(nuevoSaldo);
-          Swal.fire({
-            icon: 'success',
-            title: 'Simulación Exitosa',
-            text: `Se han depositado $${monto.toLocaleString("es-CL")} CLP localmente.`,
-          });
+        const success = await depositar(monto);
+        if (success) {
+          Swal.fire(
+            '¡Éxito!',
+            `Depósito de $${monto.toLocaleString("es-CL")} CLP acreditado correctamente.`,
+            'success'
+          );
         }
       }
     });
   };
 
-  const handleTransferSuccess = (nuevoSaldo: number) => {
-    setSaldo(nuevoSaldo);
-    if (!token) {
-      localStorage.setItem("saldo", nuevoSaldo.toString());
-    }
-  };
-
-  // Renderizar Login/Registro si no hay sesión iniciada ni simulada
-  if (!token && !modoSimulado) {
+  if (cargandoSesion) {
     return (
-      <LoginRegistro 
-        API_URL={API_URL} 
-        onLoginSuccess={handleLoginSuccess} 
-        onSimulate={handleSimulate} 
-      />
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Iniciando aplicación...</span>
+        </div>
+      </div>
     );
+  }
+
+  // Si no está autenticado ni en simulación, forzar la pantalla de Login
+  if (!token && !modoSimulado) {
+    return <LoginRegistro />;
   }
 
   return (
@@ -240,7 +122,7 @@ function App() {
               <span className="text-white me-3" id="nombreUsuario">
                 {usuario || "Cargando..."}
               </span>
-              <button className="btn btn-outline-light btn-sm" onClick={cerrarSesion}>
+              <button className="btn btn-outline-light btn-sm" onClick={logout}>
                 Cerrar Sesión
               </button>
             </div>
@@ -302,12 +184,7 @@ function App() {
                 </div>
 
                 {/* Componente Migrado: Panel de Transferencias */}
-                <PanelTransferencias 
-                  saldo={saldo} 
-                  token={token} 
-                  API_URL={API_URL} 
-                  onTransferSuccess={handleTransferSuccess} 
-                />
+                <PanelTransferencias />
               </div>
             ) : (
               <div>
@@ -318,11 +195,7 @@ function App() {
                 </div>
 
                 {/* Componente Migrado: Historial de Transacciones */}
-                <HistorialTransacciones 
-                  saldo={saldo} 
-                  token={token} 
-                  API_URL={API_URL} 
-                />
+                <HistorialTransacciones />
               </div>
             )}
 
@@ -332,9 +205,19 @@ function App() {
 
       {/* Footer */}
       <footer className="bg-white py-3 border-top mt-auto text-center text-muted fs-7">
-        Desarrollado para el Bootcamp SENCE 2025 | Migración a React por @react-migrator
+        Desarrollado para el Bootcamp SENCE 2025 | Refactorización de Arquitectura por @react-migrator
       </footer>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <TransactionProvider>
+        <WalletDashboard />
+      </TransactionProvider>
+    </AuthProvider>
   );
 }
 

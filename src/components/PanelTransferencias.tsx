@@ -1,69 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import Swal from 'sweetalert2';
 import { ModalContacto } from './ModalContacto';
+import { useTransaction } from '../context/TransactionContext';
 
-interface Contacto {
-  id?: number;
-  nombre: string;
-  apellido: string;
-  alias: string;
-  banco: string;
-  numeroCuenta: string;
-  correo: string;
-}
-
-interface PanelTransferenciasProps {
-  saldo: number;
-  token: string | null;
-  API_URL: string;
-  onTransferSuccess: (nuevoSaldo: number) => void;
-}
-
-const CONTACTOS_MOCK: Contacto[] = [
-  { nombre: 'Pedro', apellido: 'Martínez', alias: 'Pedro', banco: 'Banco Estado', numeroCuenta: '1234567890', correo: '1234567890@mail.com' },
-  { nombre: 'María', apellido: 'González', alias: 'Mari', banco: 'Banco de Chile', numeroCuenta: '9876543210', correo: '9876543210@mail.com' },
-  { nombre: 'Carlos', apellido: 'Rojas', alias: 'Carlitos', banco: 'Banco Santander', numeroCuenta: '555444333', correo: '555444333@mail.com' }
-];
-
-export const PanelTransferencias: React.FC<PanelTransferenciasProps> = ({
-  saldo,
-  token,
-  API_URL,
-  onTransferSuccess
-}) => {
-  const [contactos, setContactos] = useState<Contacto[]>([]);
+export const PanelTransferencias: React.FC = () => {
+  const { saldo, contactos, cargando, transferir, agregarContacto } = useTransaction();
   const [filtro, setFiltro] = useState('');
   const [selectedIdx, setSelectedIdx] = useState<string>('');
   const [monto, setMonto] = useState('');
   const [montoWarning, setMontoWarning] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [cargando, setCargando] = useState(false);
-
-  const cargarContactos = async () => {
-    if (token) {
-      setCargando(true);
-      try {
-        const response = await axios.get(`${API_URL}/contactos-transferencia`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (response.data.status === 'success') {
-          setContactos(response.data.data);
-        }
-      } catch (e) {
-        console.error("Error al cargar contactos:", e);
-        setContactos([]);
-      } finally {
-        setCargando(false);
-      }
-    } else {
-      setContactos(CONTACTOS_MOCK);
-    }
-  };
-
-  useEffect(() => {
-    cargarContactos();
-  }, [token]);
 
   const handleMontoChange = (val: string) => {
     setMonto(val);
@@ -90,25 +36,9 @@ export const PanelTransferencias: React.FC<PanelTransferenciasProps> = ({
     numeroCuenta: string;
   }) => {
     const correo = `${nuevo.numeroCuenta}@mail.com`;
-    if (token) {
-      try {
-        const response = await axios.post(
-          `${API_URL}/contactos-transferencia`,
-          { ...nuevo, correo },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (response.data.status === 'success') {
-          Swal.fire('¡Guardado!', 'Contacto guardado en el servidor.', 'success');
-          await cargarContactos();
-          return true;
-        }
-      } catch (err: any) {
-        Swal.fire('Error', err.response?.data?.message || 'No se pudo guardar el contacto.', 'error');
-      }
-    } else {
-      const nuevoContacto: Contacto = { ...nuevo, correo };
-      setContactos(prev => [...prev, nuevoContacto]);
-      Swal.fire('¡Éxito Simulación!', 'Contacto agregado localmente.', 'success');
+    const success = await agregarContacto({ ...nuevo, correo });
+    if (success) {
+      Swal.fire('¡Guardado!', 'Contacto guardado con éxito.', 'success');
       return true;
     }
     return false;
@@ -149,39 +79,15 @@ export const PanelTransferencias: React.FC<PanelTransferenciasProps> = ({
       }
     }
 
-    if (token) {
-      setCargando(true);
-      try {
-        const response = await axios.post(
-          `${API_URL}/transacciones/transferencia`,
-          { receiver_correo: correoReceptor, monto: numMonto },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (response.data.status === 'success') {
-          const nuevoSaldo = parseFloat(response.data.data.tuNuevoSaldo);
-          onTransferSuccess(nuevoSaldo);
-          Swal.fire(
-            '✅ ¡Transferencia Exitosa!',
-            `Se han transferido $${numMonto.toLocaleString("es-CL")} CLP a ${correoReceptor}.`,
-            'success'
-          );
-          setMonto('');
-          setSelectedIdx('');
-        }
-      } catch (err: any) {
-        Swal.fire('Error', err.response?.data?.message || 'Error en la transferencia.', 'error');
-      } finally {
-        setCargando(false);
-      }
-    } else {
-      // Simulado local
-      const nuevoSaldo = saldo - numMonto;
-      onTransferSuccess(nuevoSaldo);
-      Swal.fire({
-        icon: 'success',
-        title: '¡Transferencia Simulada!',
-        text: `Se han transferido $${numMonto.toLocaleString("es-CL")} CLP a ${correoReceptor} localmente.`,
-      });
+    if (!correoReceptor) return;
+
+    const success = await transferir(correoReceptor, numMonto);
+    if (success) {
+      Swal.fire(
+        '✅ ¡Transferencia Exitosa!',
+        `Se han transferido $${numMonto.toLocaleString("es-CL")} CLP a ${correoReceptor}.`,
+        'success'
+      );
       setMonto('');
       setSelectedIdx('');
     }
@@ -284,7 +190,7 @@ export const PanelTransferencias: React.FC<PanelTransferenciasProps> = ({
               <div className="d-grid gap-2">
                 <button
                   type="submit"
-                  className="btn btn-warning btn-lg fw-semibold"
+                  className="btn btn-warning btn-lg fw-semibold text-white"
                   disabled={cargando}
                 >
                   {cargando ? 'Transfiriendo...' : '💸 Enviar Transferencia'}

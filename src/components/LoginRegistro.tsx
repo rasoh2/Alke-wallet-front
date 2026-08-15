@@ -164,7 +164,7 @@ export const LoginRegistro: React.FC = () => {
                   className="btn btn-primary btn-lg fs-6 fw-bold"
                   disabled={cargando}
                 >
-                  {cargando ? 'Iniciando sesión...' : '🚀 Ingresar'}
+                  {cargando ? 'Iniciando sesión...' : 'Ingresar'}
                 </button>
               </div>
             </form>
